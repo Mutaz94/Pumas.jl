@@ -1,6 +1,8 @@
 using Test, SafeTestsets
 using Pumas, StatsBase
 
+include("testmodels/testmodels.jl")
+
 if group == "All" || group == "NLME_Basic"
   @time @safetestset "Maximum-likelihood interface" begin
     @time @safetestset "Types (constructors, api, etc...)"           begin include("types.jl")                     end
