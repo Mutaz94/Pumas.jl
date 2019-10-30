@@ -81,7 +81,7 @@ obs = simobs(model, s1, param, obstimes=0:1:120)
 plot(obs)
 ```
 
-![single_sub](https://user-images.githubusercontent.com/1814174/62414914-e37de280-b5ef-11e9-959a-419805577ba2.png)
+![single_sub](img/simulate_subject.svg)
 
 Generate a population of subjects
 
@@ -101,7 +101,7 @@ and visualize the output
 ```julia
 plot(obs)
 ```
-![pop_sim](https://user-images.githubusercontent.com/1814174/62414924-03ada180-b5f0-11e9-8613-3b696a335f5d.png)
+![pop_sim](img/simulate_population.svg)
 
 Let's roundtrip this simulation to test our estimation routines
 
@@ -113,7 +113,7 @@ first(simdf, 6)
 Read the data in to Pumas
 
 ```julia
-data = read_pumas(simdf, time=:time,cvs=[:isPM, :wt])
+data = read_pumas(simdf, time=:time, cvs=[:isPM, :wt])
 ```
 
 Evaluating the results of a model fit goes through an `fit` --> `infer` --> `inspect` --> `validate` cycle
@@ -127,21 +127,21 @@ FittedPumasModel
 Successful minimization:                true
 
 Likelihood approximation:        Pumas.FOCEI
-Objective function value:            8363.13
+Objective function value:           8190.106
 Total number of observation records:    1210
 Number of active observation records:   1210
 Number of subjects:                       10
 
------------------
-       Estimate
------------------
-tvcl    4.7374
-tvv    68.749
-pmoncl -0.76408
-Ω₁,₁    0.046677
-Ω₂,₂    0.024126
-σ_prop  0.041206
------------------
+---------------------
+           Estimate
+---------------------
+tvcl        4.9427
+tvv        64.223
+pmoncl     -0.69504
+Ω₁,₁        0.10994
+Ω₂,₂        0.11721
+σ_prop      0.039982
+---------------------
 ```
 
 ### `infer`
@@ -157,21 +157,21 @@ FittedPumasModelInference
 Successful minimization:                true
 
 Likelihood approximation:        Pumas.FOCEI
-Objective function value:            8363.13
+Objective function value:           8190.106
 Total number of observation records:    1210
 Number of active observation records:   1210
 Number of subjects:                       10
 
----------------------------------------------------
-       Estimate       RSE           95.0% C.I.
----------------------------------------------------
-tvcl    4.7374     10.057  [ 3.8036   ;  5.6713  ]
-tvv    68.749       5.013  [61.994    ; 75.503   ]
-pmoncl -0.76408    -3.9629 [-0.82342  ; -0.70473 ]
-Ω₁,₁    0.046677   34.518  [ 0.015098 ;  0.078256]
-Ω₂,₂    0.024126   31.967  [ 0.0090104;  0.039243]
-σ_prop  0.041206    3.0853 [ 0.038714 ;  0.043698]
----------------------------------------------------
+---------------------------------------------------------------
+          Estimate         RSE                  95.0% C.I.
+---------------------------------------------------------------
+tvcl       4.9427       16.161          [ 3.3771  ;  6.5084  ]
+tvv       64.223        10.886          [50.52    ; 77.925   ]
+pmoncl    -0.69504      -8.4551         [-0.81022 ; -0.57986 ]
+Ω₁,₁       0.10994      41.122          [ 0.021329;  0.19854 ]
+Ω₂,₂       0.11721      35.581          [ 0.035468;  0.19894 ]
+σ_prop     0.039982      4.2913         [ 0.036619;  0.043344]
+---------------------------------------------------------------
 ```
 
 ### `inspect`
@@ -184,16 +184,16 @@ resout = DataFrame(inspect(res))
 
 ```julia
 julia> first(resout, 6)
-6×13 DataFrame
-│ Row │ id     │ time    │ isPM  │ wt    │ pred    │ ipred   │ pred_approx │ wres     │ iwres     │ wres_approx │ ebe_1     │ ebe_2     │ ebes_approx │
-│     │ String │ Float64 │ Int64 │ Int64 │ Float64 │ Float64 │ Pumas.FOCEI │ Float64  │ Float64   │ Pumas.FOCEI │ Float64   │ Float64   │ Pumas.FOCEI │
-├─────┼────────┼─────────┼───────┼───────┼─────────┼─────────┼─────────────┼──────────┼───────────┼─────────────┼───────────┼───────────┼─────────────┤
-│ 1   │ 1      │ 0.0     │ 1     │ 74    │ 1344.63 │ 1679.77 │ FOCEI()     │ 0.273454 │ -0.638544 │ FOCEI()     │ -0.189025 │ -0.199515 │ FOCEI()     │
-│ 2   │ 1      │ 0.0     │ 1     │ 74    │ 1344.63 │ 1679.77 │ FOCEI()     │ 0.273454 │ -0.638544 │ FOCEI()     │ -0.189025 │ -0.199515 │ FOCEI()     │
-│ 3   │ 1      │ 0.0     │ 1     │ 74    │ 1344.63 │ 1679.77 │ FOCEI()     │ 0.273454 │ -0.638544 │ FOCEI()     │ -0.189025 │ -0.199515 │ FOCEI()     │
-│ 4   │ 1      │ 0.0     │ 1     │ 74    │ 1344.63 │ 1679.77 │ FOCEI()     │ 0.273454 │ -0.638544 │ FOCEI()     │ -0.189025 │ -0.199515 │ FOCEI()     │
-│ 5   │ 1      │ 0.0     │ 1     │ 74    │ 1344.63 │ 1679.77 │ FOCEI()     │ 0.273454 │ -0.638544 │ FOCEI()     │ -0.189025 │ -0.199515 │ FOCEI()     │
-│ 6   │ 1      │ 0.0     │ 1     │ 74    │ 1344.63 │ 1679.77 │ FOCEI()     │ 0.273454 │ -0.638544 │ FOCEI()     │ -0.189025 │ -0.199515 │ FOCEI()     │
+6×12 DataFrame
+│ Row │ id     │ time    │ isPM  │ wt    │ dv_pred │ dv_ipred │ pred_approx │ dv_wres     │ dv_iwres  │ wres_approx │ ebe_1                │ ebes_approx │
+│     │ String │ Float64 │ Int64 │ Int64 │ Float64 │ Float64  │ Pumas.FOCEI │ Float64     │ Float64   │ Pumas.FOCEI │ Array{Float64,1}     │ Pumas.FOCEI │
+├─────┼────────┼─────────┼───────┼───────┼─────────┼──────────┼─────────────┼─────────────┼───────────┼─────────────┼──────────────────────┼─────────────┤
+│ 1   │ 1      │ 0.0     │ 1     │ 74    │ 1436.35 │ 1813.1   │ FOCEI()     │ -0.00953274 │ -1.05809  │ FOCEI()     │ [0.344171, -0.20779] │ FOCEI()     │
+│ 2   │ 1      │ 1.0     │ 1     │ 74    │ 1418.4  │ 1741.66  │ FOCEI()     │ 0.0688445   │ -0.85222  │ FOCEI()     │ [0.344171, -0.20779] │ FOCEI()     │
+│ 3   │ 1      │ 2.0     │ 1     │ 74    │ 1399.64 │ 1673.04  │ FOCEI()     │ 0.270273    │ -0.476807 │ FOCEI()     │ [0.344171, -0.20779] │ FOCEI()     │
+│ 4   │ 1      │ 3.0     │ 1     │ 74    │ 1380.15 │ 1607.12  │ FOCEI()     │ 0.87765     │ 0.390877  │ FOCEI()     │ [0.344171, -0.20779] │ FOCEI()     │
+│ 5   │ 1      │ 4.0     │ 1     │ 74    │ 1360.02 │ 1543.8   │ FOCEI()     │ 0.76586     │ 0.563797  │ FOCEI()     │ [0.344171, -0.20779] │ FOCEI()     │
+│ 6   │ 1      │ 5.0     │ 1     │ 74    │ 1339.34 │ 1482.97  │ FOCEI()     │ -0.393821   │ -0.450252 │ FOCEI()     │ [0.344171, -0.20779] │ FOCEI()     │
 ```
 
 ### Simulate from fitted model
@@ -215,7 +215,7 @@ s2 = Subject(id=1,  evs=ev_sd_high_dose, cvs=(isPM=1, wt=70))
 obs = simobs(model, s2, fitparam, obstimes=0:1:160)
 plot(obs)
 ```
-![highdose](https://user-images.githubusercontent.com/1814174/62414975-a8c87a00-b5f0-11e9-9176-10fe37aef986.png)
+![highdose](img/simulate_fitted.svg)
 
 ## Visualization
 
