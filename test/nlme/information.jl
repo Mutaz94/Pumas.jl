@@ -1,5 +1,6 @@
 using Pumas, LinearAlgebra, Test
 
+# Make sure that PUMASMODELS dict is loaded
 if !isdefined(Main, :PUMASMODELS)
   include("testmodels/testmodels.jl")
 end
