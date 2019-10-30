@@ -2,8 +2,10 @@ using Pumas, Plots, Test
 
 # Make sure that PUMASMODELS dict is loaded
 if !isdefined(Main, :PUMASMODELS)
-  include("testmodels/testmodels.jl")
+  Base.include(Main, "testmodels/testmodels.jl")
 end
+
+import Main: PUMASMODELS
 
 @testset "VPC" begin
     warfarin = PUMASMODELS["1cpt"]["oral"]["normal_additive"]["warfarin"]

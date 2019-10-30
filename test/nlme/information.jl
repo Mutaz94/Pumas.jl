@@ -2,8 +2,10 @@ using Pumas, LinearAlgebra, Test
 
 # Make sure that PUMASMODELS dict is loaded
 if !isdefined(Main, :PUMASMODELS)
-  include("testmodels/testmodels.jl")
+  Base.include(Main, "testmodels/testmodels.jl")
 end
+
+import Main: PUMASMODELS
 
 @testset "Test informationmatrix with warfarin data" begin
 
