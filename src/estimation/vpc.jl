@@ -21,10 +21,12 @@ function vpc(
   )
 
   # FIXME! For now we assume homogenous sampling time across subjects. Eventually this should handle inhomogenuous sample times, e.g. with binning but preferably with some kind of Loess like estimator
-  time = first(population).time
+  # time = first(population).time
+  time = reduce(vcat, [subject.time for subject in population])
 
   # Copmute the quantile of the samples
-  empirical = [quantile([subject.observations[dvname][ti] for subject in population], probabilities) for ti in eachindex(time)]
+  # empirical = [quantile([subject.observations[dvname][ti] for subject in population], probabilities) for ti in eachindex(time)]
+  empirical = reduce(vcat, [subject.observations[dvname] for subject in population])
 
   # Simulate `reps` new populations
   sims = [simobs(m, population, param) for i in 1:reps]
@@ -33,18 +35,19 @@ function vpc(
   ci_probabilities = ((1 - ci_level)/2, (1 + ci_level)/2)
 
   # Compute the quantiles of the simulated data for the CIs
-  simulated = map(eachindex(time)) do tj
-    simulated_quantiles = map(sims) do sim
-      pop_i_at_tj = map(sim) do subject
-        return subject.observed[dvname][tj]
-      end
-      return quantile(pop_i_at_tj, probabilities)
-    end
-    tuple_of_vectors = map((1, 2, 3)) do i
-      quantile(getindex.(simulated_quantiles, i), ci_probabilities)
-    end
-    return tuple_of_vectors
-  end
+  # simulated = map(eachindex(time)) do tj
+  #   simulated_quantiles = map(sims) do sim
+  #     pop_i_at_tj = map(sim) do subject
+  #       return subject.observed[dvname][tj]
+  #     end
+  #     return quantile(pop_i_at_tj, probabilities)
+  #   end
+  #   tuple_of_vectors = map((1, 2, 3)) do i
+  #     quantile(getindex.(simulated_quantiles, i), ci_probabilities)
+  #   end
+  #   return tuple_of_vectors
+  # end
+  simulated = nothing
 
   return VPC(time, empirical, simulated, probabilities, ci_level)
 end
