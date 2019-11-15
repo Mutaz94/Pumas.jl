@@ -10,6 +10,34 @@ function Base.show(io::IO, ::MIME"text/plain", vpc::VPC)
   println(io, summary(vpc))
 end
 
+function quantile_t_sub(population,probabilities,dvname,times)
+  quantiles = []
+  for ti in times
+      quantile_ti = []
+      for subject in population
+        if ti in subject.time
+          tj = findall(x-> x==ti, subject.time)[1]
+          push!(quantile_ti, subject.observations[dvname][tj])
+        end
+      end
+      quantile_ti = [i for i in quantile_ti]
+      push!(quantiles,quantile(quantile_ti,probabilities))
+  end
+  return quantiles
+end
+
+function quantile_t_sim(sim,probabilities,dvname,ci_probabilities,times)
+  df = DataFrame(t=times, dv=[sim[i].observed[dvname] for i in 1:length(sim)])
+  df_quantile = by(df, :t, :dv => t -> quantile(t, probabilities))
+  df_quantile
+end
+
+function quantile_sub_sim(dfs,probabilities,dvname,ci_probabilities,times)
+  df = DataFrame(t=times, dv=[sim[i].observed[dvname] for i in 1:length(sim)])
+  df_quantile = by(df, :t, :dv => t -> quantile(t, probabilities))
+  df_quantile
+end
+
 function vpc(
   m::PumasModel,
   population::Population,
@@ -21,33 +49,19 @@ function vpc(
   )
 
   # FIXME! For now we assume homogenous sampling time across subjects. Eventually this should handle inhomogenuous sample times, e.g. with binning but preferably with some kind of Loess like estimator
-  # time = first(population).time
-  time = reduce(vcat, [subject.time for subject in population])
+  time = collect(Iterators.flatten([subject.time for subject in population]))
 
-  # Copmute the quantile of the samples
-  # empirical = [quantile([subject.observations[dvname][ti] for subject in population], probabilities) for ti in eachindex(time)]
-  empirical = reduce(vcat, [subject.observations[dvname] for subject in population])
+  # Compute the quantile of the samples
+  empirical = quantile_t_sub(population,probabilities,dvname,time)
 
   # Simulate `reps` new populations
   sims = [simobs(m, population, param) for i in 1:reps]
-
   # Compute the probabilities for the CI based on the level
   ci_probabilities = ((1 - ci_level)/2, (1 + ci_level)/2)
 
   # Compute the quantiles of the simulated data for the CIs
-  # simulated = map(eachindex(time)) do tj
-  #   simulated_quantiles = map(sims) do sim
-  #     pop_i_at_tj = map(sim) do subject
-  #       return subject.observed[dvname][tj]
-  #     end
-  #     return quantile(pop_i_at_tj, probabilities)
-  #   end
-  #   tuple_of_vectors = map((1, 2, 3)) do i
-  #     quantile(getindex.(simulated_quantiles, i), ci_probabilities)
-  #   end
-  #   return tuple_of_vectors
-  # end
-  simulated = nothing
+  sim_quantile = map(sim -> quantile_t_sim(sim,probabilities,dvname,ci_probabilities,time), sims)
+  simulated = map()
 
   return VPC(time, empirical, simulated, probabilities, ci_level)
 end
@@ -67,7 +81,7 @@ vpc(fpm::FittedPumasModel, reps::Integer=499; kwargs...) = vpc(fpm.model, fpm.da
 # Define an upzip function while we are waiting for the one in Base.
 function unzip(itr)
     c = collect(itr)
-    ntuple(i->map(t->getfield(t,i),c), Val(length(c[1])))
+    ntuple(i->map(t->t[i],c), Val(length(c[1])))
 end
 
 @recipe function f(vpc::VPC)
