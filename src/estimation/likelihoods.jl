@@ -1123,18 +1123,16 @@ function _update_ebes_and_evaluate_marginal_nll!(
   subject::Subject,
   param::NamedTuple,
   vrandeffsorth::Vector,
-  vrandeffsorth_tmp::Vector,
   approx::LikelihoodApproximation,
   args...;
   kwargs...
 )
 
-  # If not FO or NaivePooled then compute EBE based on the estimates from last
-  # iteration stored in vvrandeffs and store the retult in vvrandeffs_tmp
+  # If not FO or NaivePooled then compute EBE initilized at zero
   if !(approx isa FO || approx isa NaivePooled)
-    copyto!(vrandeffsorth_tmp, vrandeffsorth)
+    fill!(vrandeffsorth, 0)
     _orth_empirical_bayes!(
-      vrandeffsorth_tmp,
+      vrandeffsorth,
       m,
       subject,
       param,
@@ -1148,7 +1146,7 @@ function _update_ebes_and_evaluate_marginal_nll!(
     m,
     subject,
     param,
-    vrandeffsorth_tmp,
+    vrandeffsorth,
     approx,
     args...;
     kwargs...
@@ -1163,7 +1161,6 @@ function _update_ebes_and_evaluate_marginal_nll_threads!(
   population::Vector{<:Subject},
   param::NamedTuple,
   vvrandeffs::Vector,
-  vvrandeffs_tmp::Vector,
   approx::LikelihoodApproximation,
   args...;
   kwargs...)
@@ -1175,7 +1172,6 @@ function _update_ebes_and_evaluate_marginal_nll_threads!(
     population[1],
     param,
     vvrandeffs[1],
-    vvrandeffs_tmp[1],
     approx,
     args...;
     kwargs...
@@ -1193,7 +1189,6 @@ function _update_ebes_and_evaluate_marginal_nll_threads!(
   # Threaded evaluation of the marginal likelihood (as well as updates of the EBEs)
   Threads.@threads for i in 2:length(population)
     subject       = population[i]
-    vrandeffs_tmp = vvrandeffs_tmp[i]
     vrandeffs     = vvrandeffs[i]
 
     nllsi = _update_ebes_and_evaluate_marginal_nll!(
@@ -1201,7 +1196,6 @@ function _update_ebes_and_evaluate_marginal_nll_threads!(
       subject,
       param,
       vrandeffs,
-      vrandeffs_tmp,
       approx,
       args...;
       kwargs...
@@ -1224,18 +1218,16 @@ function _update_ebes_and_evaluate_marginal_nll!(
   population::Population,
   param::NamedTuple,
   vvrandeffs::Vector,
-  vvrandeffs_tmp::Vector,
   approx::LikelihoodApproximation,
   args...;
   kwargs...)
 
-  return sum(zip(population, vvrandeffs, vvrandeffs_tmp)) do (subject, vrandeffs, vrandeffs_tmp)
+  return sum(zip(population, vvrandeffs)) do (subject, vrandeffs)
     _update_ebes_and_evaluate_marginal_nll!(
       m,
       subject,
       param,
       vrandeffs,
-      vrandeffs_tmp,
       approx,
       args...;
       kwargs...
@@ -1271,25 +1263,11 @@ function Distributions.fit(m::PumasModel,
   param, fixedtrf = _fixed_to_constanttransform(trf, param, constantcoef)
   vparam = TransformVariables.inverse(fixedtrf, param)
 
-  # We'll store the orthogonalized random effects estimate in vvrandeffsorth which allows us to carry the estimates from last
-  # iteration and use them as staring values in the next iteration. We also allocate a buffer to store the
-  # random effect estimate during an iteration since it might be modified several times during a line search
-  # before the new value has been found. We then define a callback which will store values of vvrandeffsorth_tmp
-  # in vvrandeffsorth once the iteration is done.
+  # For the methods that computes the EBEs, we preallocate the array for storing them
   if approx isa NaivePooled
     vvrandeffsorth     = [[] for subject in population]
-    vvrandeffsorth_tmp = [copy(vrandefforths) for vrandefforths in vvrandeffsorth]
-    cb(state) = false
   else
     vvrandeffsorth     = [zero(_vecmean(m.random(param))) for subject in population]
-    vvrandeffsorth_tmp = [copy(vrandefforths) for vrandefforths in vvrandeffsorth]
-    cb = state -> begin
-      for i in eachindex(vvrandeffsorth)
-        copyto!(vvrandeffsorth[i], vvrandeffsorth_tmp[i])
-      end
-      return false
-    end
-    cb = state -> false
   end
   # Define cost function for the optimization
   cost = Optim.NLSolversBase.OnceDifferentiable(
@@ -1307,7 +1285,6 @@ function Distributions.fit(m::PumasModel,
           population,
           _param,
           vvrandeffsorth,
-          vvrandeffsorth_tmp,
           approx,
           args...;
           kwargs...)
@@ -1319,7 +1296,7 @@ function Distributions.fit(m::PumasModel,
             m,
             population,
             _vparam,
-            vvrandeffsorth_tmp,
+            vvrandeffsorth,
             approx,
             fixedtrf,
             args...; kwargs...)
@@ -1331,7 +1308,6 @@ function Distributions.fit(m::PumasModel,
           population,
           _param,
           vvrandeffsorth,
-          vvrandeffsorth_tmp,
           approx,
           args...;
           kwargs...)
@@ -1343,7 +1319,7 @@ function Distributions.fit(m::PumasModel,
             m,
             population,
             _vparam,
-            vvrandeffsorth_tmp,
+            vvrandeffsorth,
             approx,
             fixedtrf,
             args...; kwargs...)
@@ -1361,7 +1337,7 @@ function Distributions.fit(m::PumasModel,
   )
 
   # Run the optimization
-  o = optimize_fn(cost, vparam, cb)
+  o = optimize_fn(cost, vparam, s -> false)
 
   # Update the random effects after optimization
   if !(approx isa FO || approx isa NaivePooled)
