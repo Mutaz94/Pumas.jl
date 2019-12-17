@@ -10,32 +10,23 @@ function Base.show(io::IO, ::MIME"text/plain", vpc::VPC)
   println(io, summary(vpc))
 end
 
-function quantile_t_sub(population,probabilities,dvname,times)
-  quantiles = []
-  for ti in times
-      quantile_ti = []
-      for subject in population
-        if ti in subject.time
-          tj = findall(x-> x==ti, subject.time)[1]
-          push!(quantile_ti, subject.observations[dvname][tj])
-        end
-      end
-      quantile_ti = [i for i in quantile_ti]
-      push!(quantiles,quantile(quantile_ti,probabilities))
-  end
-  return quantiles
-end
-
-function quantile_t_sim(sim,probabilities,dvname,ci_probabilities,times)
-  df = DataFrame(t=times, dv=[sim[i].observed[dvname] for i in 1:length(sim)])
-  df_quantile = by(df, :t, :dv => t -> quantile(t, probabilities))
+function quantile_t_data(sim,probabilities,dvname,times)
+  df = DataFrame(t=times, dv=collect(Iterators.flatten([sim[i].observations[dvname] for i in 1:length(sim)])))
+  df_quantile = by(df, :t, (low_quantile = :dv => t -> ( quantile(t, probabilities[1])), quantile = :dv => t -> ( quantile(t, probabilities[2])), high_quantile = :dv => t -> ( quantile(t, probabilities[3]))))
   df_quantile
 end
 
-function quantile_sub_sim(dfs,probabilities,dvname,ci_probabilities,times)
-  df = DataFrame(t=times, dv=[sim[i].observed[dvname] for i in 1:length(sim)])
-  df_quantile = by(df, :t, :dv => t -> quantile(t, probabilities))
+function quantile_t_sim(sim,probabilities,dvname,times)
+  df = DataFrame(t=times, dv=collect(Iterators.flatten([sim[i].observed[dvname] for i in 1:length(sim)])))
+  df_quantile = by(df, :t, (low_quantile = :dv => t -> ( quantile(t, probabilities[1])), quantile = :dv => t -> ( quantile(t, probabilities[2])), high_quantile = :dv => t -> ( quantile(t, probabilities[3]))))
   df_quantile
+end
+
+function quantile_sub_sim(dfs,ci_probabilities,times)
+  df_aggregate = DataFrame()
+  map(df -> append!(df_aggregate, df), dfs)
+  df_sim_quantile =  by(df_aggregate, :t, (:low_quantile => t -> quantile(t, ci_probabilities), :quantile => t -> quantile(t, ci_probabilities),:high_quantile => t -> quantile(t, ci_probabilities)))
+  return df_sim_quantile 
 end
 
 function vpc(
@@ -52,7 +43,7 @@ function vpc(
   time = collect(Iterators.flatten([subject.time for subject in population]))
 
   # Compute the quantile of the samples
-  empirical = quantile_t_sub(population,probabilities,dvname,time)
+  empirical = quantile_t_data(population,probabilities,dvname,time)
 
   # Simulate `reps` new populations
   sims = [simobs(m, population, param) for i in 1:reps]
@@ -60,8 +51,8 @@ function vpc(
   ci_probabilities = ((1 - ci_level)/2, (1 + ci_level)/2)
 
   # Compute the quantiles of the simulated data for the CIs
-  sim_quantile = map(sim -> quantile_t_sim(sim,probabilities,dvname,ci_probabilities,time), sims)
-  simulated = map()
+  sim_quantile = map(sim -> quantile_t_sim(sim,probabilities,dvname,time), sims)
+  simulated = quantile_sub_sim(sim_quantile, ci_probabilities, time)
 
   return VPC(time, empirical, simulated, probabilities, ci_level)
 end
@@ -78,18 +69,9 @@ The following keyword arguments are supported:
 """
 vpc(fpm::FittedPumasModel, reps::Integer=499; kwargs...) = vpc(fpm.model, fpm.data, coef(fpm), reps; kwargs...)
 
-# Define an upzip function while we are waiting for the one in Base.
-function unzip(itr)
-    c = collect(itr)
-    ntuple(i->map(t->t[i],c), Val(length(c[1])))
-end
-
 @recipe function f(vpc::VPC)
-  empirical = unzip(vpc.empirical)
-  simulated = unzip(vpc.simulated)
-
   empirical_style = [:dashdot, :solid, :dot]
-
+  ribbon_simulated = hcat([vpc.simulated[!,i] for i in 2:4])
   title --> "Confidence interval VPC"
   for i in 1:3
     @series begin
@@ -98,17 +80,17 @@ end
       linewidth --> 2
       linecolor --> :red
       linestyle --> empirical_style[i]
-      vpc.time, empirical[i]
+      vpc.empirical[!,1], vpc.empirical[!,i+1]
     end
 
     @series begin
       label --> hcat(i == 3 ? "Simulated $(vpc.confidence_level*100)% confidence intervals" : "", "")
       xlabel --> "time"
-      fillrange --> hcat(reverse(unzip(simulated[i]))...)
+      fillrange --> [[ribbon_simulated[i][j][1] for j in 1:length(ribbon_simulated[i])],[[ribbon_simulated[i][j][2] for j in 1:length(ribbon_simulated[i])]]]
       fillcolor --> :blue
       fillalpha --> 0.2
       linewidth --> 0.0
-      vpc.time, hcat(empirical[i], empirical[i])
+      vpc.simulated[!,1], hcat(vpc.empirical[!,i+1], vpc.empirical[!,i+1])
     end
   end
 end

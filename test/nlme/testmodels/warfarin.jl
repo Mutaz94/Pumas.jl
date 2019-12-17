@@ -27,7 +27,7 @@ _modeldict["warfarin"]["analytical"] = @model begin
     Ka   = Tvka*exp(η[3])
   end
 
-  @dynamics OneCompartmentModel
+  @dynamics Depots1Central1
 
   @vars begin
     conc = Central/V
