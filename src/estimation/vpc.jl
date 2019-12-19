@@ -140,6 +140,7 @@ vpc(fpm::FittedPumasModel, reps::Integer=499; kwargs...) = vpc(fpm.model, fpm.da
         linewidth --> 2
         linecolor --> :red
         linestyle --> empirical_style[i]
+        legend --> :outerbottom
         vpc.empirical[!,1], vpc.empirical[!,i+1]
       end
 
@@ -150,6 +151,7 @@ vpc(fpm::FittedPumasModel, reps::Integer=499; kwargs...) = vpc(fpm.model, fpm.da
         fillcolor --> :blue
         fillalpha --> 0.2
         linewidth --> 0.0
+        legend --> :outerbottom
         vpc.simulated[!,1], hcat(vpc.empirical[!,i+1], vpc.empirical[!,i+1])
       end
     end
